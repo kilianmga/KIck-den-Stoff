@@ -12,6 +12,7 @@
 
   $: answer = response?.answer ?? response?.result ?? '';
   $: hasAnswer = Boolean(answer && response?.success);
+  $: formattedAnswer = formatAnswer(answer);
 
   // Parse quiz if the mode was quiz
   $: isQuizMode = response?.mode === 'quiz' || response?.mode === 'QUIZ';
@@ -50,6 +51,78 @@
       copied = false;
     }, 1600);
   }
+
+  function formatAnswer(value: string) {
+    if (!value.trim()) return '';
+
+    const lines = value.trim().replace(/\r\n/g, '\n').split('\n');
+    const html: string[] = [];
+    let listOpen = false;
+
+    const closeList = () => {
+      if (listOpen) {
+        html.push('</ul>');
+        listOpen = false;
+      }
+    };
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+
+      if (!line) {
+        closeList();
+        continue;
+      }
+
+      const markdownHeading = line.match(/^#{1,3}\s+(.+)$/);
+      if (markdownHeading) {
+        closeList();
+        html.push(`<h3>${formatInline(markdownHeading[1])}</h3>`);
+        continue;
+      }
+
+      const numberedHeading = line.match(/^\d+[.)]\s+([^:.?]+[.:?])\s*(.*)$/);
+      if (numberedHeading) {
+        closeList();
+        html.push(`<h3>${formatInline(numberedHeading[1].replace(/[.:?]$/, ''))}</h3>`);
+        if (numberedHeading[2]) {
+          html.push(`<p>${formatInline(numberedHeading[2])}</p>`);
+        }
+        continue;
+      }
+
+      const bullet = line.match(/^[-*•]\s+(.+)$/);
+      if (bullet) {
+        if (!listOpen) {
+          html.push('<ul>');
+          listOpen = true;
+        }
+        html.push(`<li>${formatInline(bullet[1])}</li>`);
+        continue;
+      }
+
+      closeList();
+      html.push(`<p>${formatInline(line)}</p>`);
+    }
+
+    closeList();
+    return html.join('');
+  }
+
+  function formatInline(value: string) {
+    return escapeHtml(value)
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
+  }
+
+  function escapeHtml(value: string) {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 </script>
 
 <section class="response-panel" aria-live="polite">
@@ -85,7 +158,9 @@
       <QuizView questions={quizData} />
     {:else}
       <article class="answer-card">
-        <pre>{answer}</pre>
+        <div class="answer-content">
+          {@html formattedAnswer}
+        </div>
       </article>
       <div class="response-actions">
         <button type="button" on:click={onSimplify}>Noch einfacher erklären</button>

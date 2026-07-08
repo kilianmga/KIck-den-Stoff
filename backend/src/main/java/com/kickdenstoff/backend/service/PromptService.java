@@ -10,9 +10,11 @@ public class PromptService {
     private static final String SYSTEM_PROMPT = """
             /no_think
             Du bist ein lokaler KI-Lerncoach für Schüler. Du erklärst Schulstoff einfach, korrekt und motivierend.
-            Passe deine Sprache an die angegebene Klassenstufe an. Gib keine endlosen Antworten.
-            Strukturiere deine Antwort mit klaren Abschnitten. Wenn Informationen fehlen, arbeite mit dem vorhandenen Material
-            und sage kurz, was fehlt. Gib keine erfundenen Fakten aus dem Schulmaterial vor.
+            Passe deine Sprache an die angegebene Klassenstufe an. Antworte kurz, praktisch und direkt.
+            Arbeite nur mit den angegebenen Informationen. Wenn wichtige Informationen fehlen, sage kurz, was fehlt,
+            statt Inhalte zu erfinden.
+            Formatiere die Antwort als einfaches Markdown mit Überschriften und Aufzählungen.
+            Verwende keine Codeblöcke, keine Tabellen und keine Meta-Kommentare wie "nicht geprüft" oder "als KI".
             Gib ausschließlich die finale Antwort aus, keine Denkprozesse.
             """;
 
@@ -21,46 +23,53 @@ public class PromptService {
     }
 
     public String userPrompt(LearningMode mode, LearningRequest request) {
-        String context = """
+        String learningContext = """
                 Fach: %s
                 Klasse: %s
                 Thema: %s
-                Material: %s
-                Frage oder Wunsch: %s
                 """.formatted(
                 request.safeSubject(),
                 request.effectiveGrade(),
-                request.safeTopic(),
-                valueOrMissing(request.effectiveInputText()),
-                valueOrMissing(request.effectiveQuestion())
+                request.safeTopic()
         );
+        String material = valueOrMissing(request.effectiveInputText());
+        String task = valueOrMissing(request.effectiveQuestion());
+        String fullContext = context(learningContext, material, task);
 
         String prompt = switch (mode) {
             case EXPLAIN -> """
                     Erkläre den folgenden Schulstoff einfach und verständlich.
 
                     %s
-                    Antwortformat:
-                    1. Kurz erklärt
-                    2. Wichtigste Begriffe
-                    3. Beispiel
-                    4. Merksatz
-                    """.formatted(context);
+                    Schulstoff oder Material:
+                    %s
+
+                    Wunsch des Schülers:
+                    %s
+
+                    Ausgabeformat:
+                    ## Kurz erklärt
+                    ## Wichtigste Begriffe
+                    ## Beispiel
+                    ## Merksatz
+                    """.formatted(learningContext, material, task);
             case EXERCISES -> """
                     Erstelle passende Übungsaufgaben zum Schulstoff.
 
                     %s
-                    Antwortformat:
-                    1. 5 Aufgaben von leicht bis schwer
-                    2. Lösungen
-                    3. Kurze Lösungswege
-                    """.formatted(context);
+
+                    Ausgabeformat:
+                    ## Aufgaben
+                    - 5 Aufgaben von leicht bis schwer
+                    ## Lösungen
+                    - kurze Lösungswege
+                    """.formatted(fullContext);
             case QUIZ -> """
                     Erstelle einen kurzen Wissenstest zum Schulstoff.
 
                     %s
-                    
-                    WICHTIG: Antworte AUSSCHLIESSLICH mit einem validen JSON-Array. Kein Markdown, kein Text davor oder danach!
+
+                    WICHTIG: Antworte AUSSCHLIESSLICH mit einem validen JSON-Array. Kein Markdown, kein Text davor oder danach.
                     Format-Beispiel:
                     [
                       {
@@ -70,48 +79,79 @@ public class PromptService {
                         "explanation": "Erklärung für Antwort A"
                       }
                     ]
-                    
+
                     Erstelle 5 Quizfragen.
-                    """.formatted(context);
+                    """.formatted(fullContext);
             case CORRECT -> """
-                    Korrigiere oder bewerte die folgende Schülerantwort.
+                    Korrigiere den folgenden Schülertext.
 
                     %s
-                    Antwortformat:
-                    1. Was ist richtig?
-                    2. Was ist falsch oder unklar?
-                    3. Verbesserte Version
-                    4. Konkreter Tipp für die nächste Antwort
-                    """.formatted(context);
+                    Zu korrigierender Schülertext:
+                    %s
+
+                    Auftrag:
+                    %s
+
+                    Wichtige Regeln:
+                    - Der Auftrag ist nicht der Schülertext.
+                    - Korrigiere nur den Text unter "Zu korrigierender Schülertext".
+                    - Wenn dort kein sinnvoller Satz oder weniger als sechs Wörter stehen, erfinde keine Lösung. Bitte dann um den konkreten Text.
+                    - Erfinde keine Formeln, Fakten oder Beispieltexte, die nicht im Schülertext stehen.
+
+                    Ausgabeformat:
+                    ## Korrigierte Version
+                    ## Was verbessert wurde
+                    - kurze Punkte
+                    ## Tipp
+                    - ein konkreter nächster Schritt
+                    """.formatted(learningContext, material, task);
             case CRASH_COURSE -> """
                     Erstelle einen kompakten Lernplan für eine baldige Klassenarbeit.
 
                     %s
-                    Antwortformat:
-                    1. Lernziel
-                    2. 30-90 Minuten Lernplan
-                    3. Wichtigste Regeln oder Fakten
-                    4. Typische Aufgaben
-                    5. Mini-Test
-                    6. Letzte Wiederholung
-                    """.formatted(context);
+                    Schulstoff oder Material:
+                    %s
+
+                    Wunsch oder verfügbare Zeit:
+                    %s
+
+                    Ausgabeformat:
+                    ## Lernziel
+                    ## Lernplan
+                    ## Wichtigste Regeln
+                    ## Typische Aufgaben
+                    ## Mini-Test
+                    ## Letzte Wiederholung
+                    """.formatted(learningContext, material, task);
             case SHOW_SOLUTION_PATH -> """
                     Zeige nicht nur das Ergebnis, sondern den Lösungsweg.
 
                     %s
-                    Antwortformat:
-                    1. Gegeben
-                    2. Gesucht
-                    3. Schritt-für-Schritt-Lösung
-                    4. Warum das funktioniert
-                    5. Typischer Fehler
-                    """.formatted(context);
+                    Aufgabe oder Material:
+                    %s
+
+                    Frage:
+                    %s
+
+                    Ausgabeformat:
+                    ## Gegeben
+                    ## Gesucht
+                    ## Schritt-für-Schritt-Lösung
+                    ## Warum das funktioniert
+                    ## Typischer Fehler
+                    """.formatted(learningContext, material, task);
             case CHAT -> """
                     Beantworte die Frage des Schülers als Lerncoach.
 
                     %s
+                    Schulstoff oder Material:
+                    %s
+
+                    Frage:
+                    %s
+
                     Antworte hilfreich, kurz und schülergerecht.
-                    """.formatted(context);
+                    """.formatted(learningContext, material, task);
         };
 
         return """
@@ -119,6 +159,17 @@ public class PromptService {
 
                 %s
                 """.formatted(prompt);
+    }
+
+    private String context(String learningContext, String material, String task) {
+        return """
+                %s
+                Schulstoff oder Material:
+                %s
+
+                Wunsch des Schülers:
+                %s
+                """.formatted(learningContext, material, task);
     }
 
     private String valueOrMissing(String value) {

@@ -57,6 +57,40 @@ Optional:
 VITE_BACKEND_BASE_URL=http://localhost:8080
 ```
 
+## Im lokalen Netzwerk nutzen
+
+Backend und Frontend sind fuer den Zugriff von anderen Geraeten im selben Netzwerk vorbereitet.
+
+Start:
+
+```bash
+cd backend
+./gradlew bootRun
+```
+
+```bash
+cd frontend
+npm run dev -- --host 0.0.0.0
+```
+
+Dann auf dem anderen Geraet im Browser oeffnen:
+
+```text
+http://DEINE-MAC-IP:5173
+```
+
+Das Frontend ruft automatisch `http://DEINE-MAC-IP:8080` als Backend auf. Wenn du eine Domain, HTTPS oder einen Tunnel nutzt, setze die Backend-URL explizit:
+
+```bash
+VITE_BACKEND_BASE_URL=https://deine-backend-url npm run dev -- --host 0.0.0.0
+```
+
+Fuer eine andere Frontend-Origin kannst du CORS beim Backend uebersteuern:
+
+```bash
+FRONTEND_ALLOWED_ORIGIN_PATTERNS="https://deine-domain.de" ./gradlew bootRun
+```
+
 ## Demo-Flow
 
 1. LM Studio starten.

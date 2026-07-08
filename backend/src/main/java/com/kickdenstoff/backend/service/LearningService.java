@@ -24,6 +24,16 @@ public class LearningService {
             return LearningResponse.failure(mode, "Bitte gib ein Thema, Material oder eine Frage ein.");
         }
 
+        if (mode == LearningMode.CORRECT && isTooShortForCorrection(request.effectiveInputText())) {
+            return LearningResponse.success(mode, """
+                    ## Ich brauche deinen Text
+                    Füge bitte den Satz oder Absatz ein, den ich korrigieren soll.
+
+                    ## Beispiel
+                    Schreibe in das Feld "Schulstoff oder Material" deinen echten Text, zum Beispiel: "Die Französische Revolution begann, weil viele Menschen unzufrieden waren."
+                    """);
+        }
+
         try {
             String answer = lmStudioClient.chat(
                     promptService.systemPrompt(),
@@ -73,5 +83,18 @@ public class LearningService {
                 safeRequest.style(),
                 safeRequest.mode()
         );
+    }
+
+    private boolean isTooShortForCorrection(String text) {
+        if (text == null || text.isBlank()) {
+            return true;
+        }
+
+        String trimmed = text.trim();
+        if (trimmed.endsWith("?")) {
+            return true;
+        }
+
+        return trimmed.split("\\s+").length < 6;
     }
 }

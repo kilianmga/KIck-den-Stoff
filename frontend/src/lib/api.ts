@@ -9,7 +9,20 @@ const endpointByMode: Record<LearningMode, string> = {
   chat: '/api/learn/chat'
 };
 
-const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL ?? 'http://10.39.4.137:8080';
+function resolveBackendBaseUrl() {
+  const configuredBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL;
+  if (configuredBaseUrl) {
+    return configuredBaseUrl;
+  }
+
+  if (typeof window === 'undefined') {
+    return 'http://localhost:8080';
+  }
+
+  return `${window.location.protocol}//${window.location.hostname}:8080`;
+}
+
+const backendBaseUrl = resolveBackendBaseUrl();
 
 export async function sendLearningRequest(
   mode: LearningMode,
