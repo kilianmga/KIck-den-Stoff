@@ -248,6 +248,52 @@ textarea {
   resize: vertical;
 }
 
+.file-upload input[type="file"] {
+  border-style: dashed;
+  background: #f6fbff;
+}
+
+.file-upload small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.file-chip {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f6fbff;
+  padding: 9px 10px;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.file-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-chip button {
+  flex: 0 0 auto;
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 6px 9px;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.field-error {
+  color: var(--danger) !important;
+}
+
 .mode-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
