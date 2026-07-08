@@ -289,35 +289,6 @@ textarea:focus-visible {
   animation-delay: 240ms;
 }
 
-.assessment-card,
-.overall-card {
-  display: grid;
-  gap: 6px;
-  border-left: 4px solid var(--accent);
-  border-radius: 8px;
-  background: var(--surface-2);
-  padding: 12px;
-}
-
-.assessment-card h3,
-.assessment-card p,
-.overall-card h2,
-.overall-card p {
-  margin: 0;
-}
-
-.assessment-card h3,
-.overall-card h2 {
-  color: var(--ink);
-  font-size: 1rem;
-}
-
-.assessment-card p,
-.overall-card p {
-  color: var(--muted);
-  line-height: 1.5;
-}
-
 .message-actions {
   display: flex;
   flex-wrap: wrap;
@@ -493,13 +464,6 @@ textarea:focus-visible {
   min-height: 0;
 }
 
-.overall-card {
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--accent);
-  background: var(--surface);
-  box-shadow: 0 12px 34px rgba(24, 34, 29, 0.07);
-}
-
 .eyebrow {
   color: var(--accent-strong) !important;
   font-size: 0.74rem;
@@ -543,7 +507,7 @@ textarea:focus-visible {
   }
 
   .learning-sidebar {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 1fr;
   }
 }
 

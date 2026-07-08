@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { LearningResponse, QuizQuestion } from './types';
+  import type { LearningResponse, QuizPayload, QuizQuestion } from './types';
   import QuizView from './QuizView.svelte';
 
   export let loading = false;
@@ -18,9 +18,9 @@
   $: isQuizMode = response?.mode === 'quiz' || response?.mode === 'QUIZ';
   $: quizData = parseQuizData(answer, isQuizMode);
 
-  function parseQuizData(text: string, isQuiz: boolean): QuizQuestion[] | null {
+  function parseQuizData(text: string, isQuiz: boolean): QuizPayload | null {
     if (!isQuiz || !text) return null;
-    
+
     // Sometimes the LLM wraps JSON in markdown blocks
     let cleanText = text.trim();
     if (cleanText.startsWith('```json')) {
@@ -33,14 +33,82 @@
     }
 
     try {
-      const parsed = JSON.parse(cleanText);
-      if (Array.isArray(parsed) && parsed.length > 0 && 'question' in parsed[0]) {
-        return parsed as QuizQuestion[];
+      const parsed = JSON.parse(sanitizeJsonForParse(cleanText));
+      const rawQuestions = Array.isArray(parsed) ? parsed : parsed.questions;
+      if (Array.isArray(rawQuestions)) {
+        const questions = rawQuestions
+          .map(normalizeQuestion)
+          .filter((question): question is QuizQuestion => Boolean(question));
+
+        if (questions.length) {
+          return {
+            title: typeof parsed?.title === 'string' ? normalizeMathText(parsed.title) : 'Quiz erstellt',
+            topic: typeof parsed?.topic === 'string' ? normalizeMathText(parsed.topic) : '',
+            questions,
+            miniEvaluation: normalizeMiniEvaluation(parsed?.miniEvaluation),
+            overallAssessment:
+              typeof parsed?.overallAssessment === 'string'
+                ? normalizeMathText(parsed.overallAssessment)
+                : undefined
+          };
+        }
       }
     } catch (e) {
       console.warn('Failed to parse Quiz JSON:', e);
     }
     return null;
+  }
+
+  function normalizeQuestion(raw: unknown): QuizQuestion | null {
+    const item = raw as Partial<QuizQuestion>;
+    if (!item || typeof item.question !== 'string' || !Array.isArray(item.options)) {
+      return null;
+    }
+
+    const options = item.options.map((option) => normalizeMathText(String(option))).filter(Boolean);
+    if (!item.question.trim() || options.length < 2) {
+      return null;
+    }
+
+    const correctIndex =
+      typeof item.correctIndex === 'number' && item.correctIndex >= 0
+        ? Math.min(item.correctIndex, options.length - 1)
+        : 0;
+
+    return {
+      question: normalizeMathText(item.question),
+      options,
+      correctIndex,
+      explanation:
+        typeof item.explanation === 'string' && item.explanation.trim()
+          ? normalizeMathText(item.explanation)
+          : 'Vergleiche die richtige Antwort noch einmal mit dem Material.'
+    };
+  }
+
+  function normalizeMiniEvaluation(value: unknown) {
+    if (!Array.isArray(value)) return [];
+    return value.map((item) => normalizeMathText(String(item))).filter(Boolean);
+  }
+
+  function sanitizeJsonForParse(text: string) {
+    return text.replace(/(?<!\\)\\(?!["\\/bfnrtu])/g, '\\\\');
+  }
+
+  function normalizeMathText(value: string) {
+    return value
+      .replace(/\\\(/g, '')
+      .replace(/\\\)/g, '')
+      .replace(/\\\[/g, '')
+      .replace(/\\\]/g, '')
+      .replace(/\\sqrt\{([^{}]+)\}/g, '√($1)')
+      .replace(/\\approx/g, '≈')
+      .replace(/\\Rightarrow/g, '⇒')
+      .replace(/\\times/g, '×')
+      .replace(/\^2/g, '²')
+      .replace(/\^3/g, '³')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   async function copyAnswer() {
@@ -155,7 +223,10 @@
     </div>
   {:else if hasAnswer}
     {#if isQuizMode && quizData}
-      <QuizView questions={quizData} />
+      <QuizView
+        title={quizData.title}
+        questions={quizData.questions}
+      />
     {:else}
       <article class="answer-card">
         <div class="answer-content">

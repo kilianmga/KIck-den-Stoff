@@ -3,7 +3,6 @@
 
   export let questions: QuizQuestion[] = [];
   export let title = 'Quiz erstellt';
-  export let miniEvaluation: string[] = [];
   export let onComplete: (score: number, total: number) => void = () => {};
 
   let currentIndex = 0;
@@ -17,7 +16,8 @@
   $: currentQuestion = questions[currentIndex];
   $: isLastQuestion = currentIndex === questions.length - 1;
   $: percentage = questions.length ? Math.round((score / questions.length) * 100) : 0;
-  $: activeEvaluation = pickEvaluation();
+  $: grade = gradeForPercentage(percentage);
+  $: gradeLabel = labelForGrade(grade);
 
   function selectOption(index: number) {
     if (showExplanation || quizFinished) return;
@@ -42,7 +42,7 @@
 
   function finishQuiz() {
     quizFinished = true;
-    showSolutions = true;
+    showSolutions = false;
 
     if (!completionSent) {
       completionSent = true;
@@ -60,23 +60,46 @@
     completionSent = false;
   }
 
-  function pickEvaluation() {
-    if (!miniEvaluation.length || !questions.length) {
-      if (percentage >= 80) return 'Stark: Du hast das Thema schon gut im Griff.';
-      if (percentage >= 50) return 'Gute Basis: Wiederhole die unsicheren Fragen noch einmal.';
-      return 'Da ist noch Übung nötig: Starte mit den Grundlagen und mache danach ein neues Quiz.';
-    }
+  function gradeForPercentage(value: number) {
+    if (value >= 92) return 1;
+    if (value >= 80) return 2;
+    if (value >= 65) return 3;
+    if (value >= 50) return 4;
+    if (value >= 30) return 5;
+    return 6;
+  }
 
-    if (percentage >= 80) return miniEvaluation[2] ?? miniEvaluation.at(-1) ?? miniEvaluation[0];
-    if (percentage >= 50) return miniEvaluation[1] ?? miniEvaluation[0];
-    return miniEvaluation[0];
+  function labelForGrade(value: number) {
+    const labels: Record<number, string> = {
+      1: 'sehr gut',
+      2: 'gut',
+      3: 'befriedigend',
+      4: 'ausreichend',
+      5: 'mangelhaft',
+      6: 'ungenügend'
+    };
+
+    return labels[value] ?? 'offen';
+  }
+
+  function formatMathText(value: string) {
+    return value
+      .replace(/\\\(/g, '')
+      .replace(/\\\)/g, '')
+      .replace(/\\sqrt\{([^{}]+)\}/g, '√($1)')
+      .replace(/\\approx/g, '≈')
+      .replace(/\\Rightarrow/g, '⇒')
+      .replace(/\\times/g, '×')
+      .replace(/\^2/g, '²')
+      .replace(/\^3/g, '³')
+      .trim();
   }
 </script>
 
 <section class="quiz-card" aria-labelledby="quiz-title">
   <div class="quiz-title-row">
     <div>
-      <p>Quiz erstellen</p>
+      <p>Interaktives Quiz</p>
       <h3 id="quiz-title">{title}</h3>
     </div>
     <span>{questions.length} Fragen</span>
@@ -84,12 +107,24 @@
 
   {#if quizFinished}
     <div class="quiz-result">
-      <strong>{score} von {questions.length} richtig</strong>
+      <div class="grade-card" aria-label="Quiznote">
+        <span>Note</span>
+        <strong>{grade}</strong>
+        <em>{gradeLabel}</em>
+      </div>
+      <div class="result-summary">
+        <strong>{score} von {questions.length} richtig</strong>
+        <p>{percentage}% erreicht</p>
+      </div>
       <div class="progress-bar-bg" aria-hidden="true">
         <div class="progress-bar-fill" style="width: {percentage}%"></div>
       </div>
-      <p>{activeEvaluation}</p>
-      <button class="primary-button" type="button" on:click={restartQuiz}>Nochmal üben</button>
+      <div class="result-actions">
+        <button class="primary-button" type="button" on:click={restartQuiz}>Nochmal üben</button>
+        <button class="ghost-button" type="button" on:click={() => (showSolutions = !showSolutions)}>
+          {showSolutions ? 'Lösungen ausblenden' : 'Lösungen ansehen'}
+        </button>
+      </div>
     </div>
   {:else if currentQuestion}
     <div class="quiz-header">
@@ -97,7 +132,13 @@
       <span>Punkte: {score}</span>
     </div>
 
-    <h4 class="question-text">{currentQuestion.question}</h4>
+    <div class="question-progress" aria-hidden="true">
+      {#each questions as _, index}
+        <span class:active={index === currentIndex} class:done={index < currentIndex}></span>
+      {/each}
+    </div>
+
+    <h4 class="question-text">{formatMathText(currentQuestion.question)}</h4>
 
     <div class="options-grid">
       {#each currentQuestion.options as option, index}
@@ -115,7 +156,7 @@
           on:click={() => selectOption(index)}
         >
           <span class="option-letter">{String.fromCharCode(65 + index)}</span>
-          <span class="option-text">{option}</span>
+          <span class="option-text">{formatMathText(option)}</span>
           {#if showExplanation && isCorrect}
             <b>Richtig</b>
           {:else if showExplanation && isWrong}
@@ -134,7 +175,7 @@
         <strong>
           {selectedOption === currentQuestion.correctIndex ? 'Richtig gelöst' : 'Nicht ganz'}
         </strong>
-        <p>{currentQuestion.explanation}</p>
+        <p>{formatMathText(currentQuestion.explanation)}</p>
       </div>
 
       <button class="primary-button next-button" type="button" on:click={nextQuestion}>
@@ -145,19 +186,13 @@
     <p class="quiz-empty">Keine Quizfragen gefunden.</p>
   {/if}
 
-  {#if questions.length}
-    <div class="solution-toggle">
-      <button class="ghost-button" type="button" on:click={() => (showSolutions = !showSolutions)}>
-        {showSolutions ? 'Lösungen ausblenden' : 'Lösungen anzeigen'}
-      </button>
-    </div>
-
+  {#if questions.length && quizFinished}
     {#if showSolutions}
       <ol class="solution-list">
         {#each questions as question, index}
           <li>
             <strong>{index + 1}. {question.options[question.correctIndex] ?? 'Lösung prüfen'}</strong>
-            <span>{question.explanation}</span>
+            <span>{formatMathText(question.explanation)}</span>
           </li>
         {/each}
       </ol>
@@ -188,7 +223,10 @@
   .quiz-title-row h3,
   .quiz-header span,
   .question-text,
-  .quiz-result p {
+  .quiz-result p,
+  .grade-card span,
+  .grade-card strong,
+  .grade-card em {
     margin: 0;
   }
 
@@ -220,6 +258,27 @@
     color: var(--muted);
     font-size: 0.88rem;
     font-weight: 800;
+  }
+
+  .question-progress {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18px, 1fr));
+    gap: 6px;
+  }
+
+  .question-progress span {
+    height: 7px;
+    border-radius: 999px;
+    background: #eadba7;
+  }
+
+  .question-progress span.done,
+  .question-progress span.active {
+    background: var(--accent);
+  }
+
+  .question-progress span.active {
+    box-shadow: 0 0 0 3px rgba(40, 185, 109, 0.18);
   }
 
   .question-text {
@@ -323,7 +382,9 @@
 
   .quiz-result {
     display: grid;
-    gap: 12px;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
   }
 
   .quiz-result strong {
@@ -336,7 +397,51 @@
     line-height: 1.5;
   }
 
+  .grade-card {
+    display: grid;
+    width: 112px;
+    min-height: 112px;
+    place-items: center;
+    border: 2px solid #76530d;
+    border-radius: 8px;
+    background: #ffe39a;
+    box-shadow: 5px 5px 0 #76530d;
+    color: #342609;
+    text-align: center;
+  }
+
+  .grade-card span {
+    font-size: 0.76rem;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .grade-card strong {
+    font-size: 3.2rem;
+    line-height: 0.9;
+  }
+
+  .grade-card em {
+    font-size: 0.82rem;
+    font-style: normal;
+    font-weight: 900;
+  }
+
+  .result-summary {
+    display: grid;
+    gap: 4px;
+  }
+
+  .result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+    gap: 10px;
+  }
+
   .progress-bar-bg {
+    grid-column: 1 / -1;
     height: 12px;
     overflow: hidden;
     border-radius: 999px;
@@ -348,11 +453,6 @@
     border-radius: inherit;
     background: var(--accent);
     transition: width 420ms ease;
-  }
-
-  .solution-toggle {
-    display: flex;
-    justify-content: flex-start;
   }
 
   .solution-list {
@@ -393,6 +493,15 @@
 
     .option-button b {
       grid-column: 2;
+    }
+
+    .quiz-result {
+      grid-template-columns: 1fr;
+    }
+
+    .grade-card {
+      width: 100%;
+      min-height: 96px;
     }
   }
 </style>

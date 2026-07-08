@@ -93,8 +93,6 @@
 
   $: selectedModeDefinition = modes.find((mode) => mode.id === selectedMode) ?? modes[0];
   $: canSend = Boolean(composerText.trim() || pdfFile) && !loading;
-  $: latestAssistant = [...messages].reverse().find((message) => message.role === 'assistant' && !message.pending && !message.error);
-  $: overallAssessment = buildOverallAssessment(progressRecords, latestAssistant);
 
   onMount(() => {
     void refreshProgress();
@@ -326,7 +324,7 @@
     if (!enabled || !text.trim()) return null;
 
     try {
-      const parsed = JSON.parse(stripJsonNoise(text));
+      const parsed = JSON.parse(sanitizeJsonForParse(stripJsonNoise(text)));
       const rawQuestions = Array.isArray(parsed) ? parsed : parsed.questions;
 
       if (!Array.isArray(rawQuestions)) {
@@ -347,12 +345,14 @@
         title: typeof parsed?.title === 'string' ? parsed.title : 'Quiz erstellt',
         topic:
           typeof parsed?.topic === 'string' && parsed.topic.trim()
-            ? sanitizeTopic(parsed.topic)
+            ? sanitizeTopic(normalizeMathText(parsed.topic))
             : '',
         questions,
         miniEvaluation,
         overallAssessment:
-          typeof parsed?.overallAssessment === 'string' ? parsed.overallAssessment.trim() : undefined
+          typeof parsed?.overallAssessment === 'string'
+            ? normalizeMathText(parsed.overallAssessment).trim()
+            : undefined
       };
     } catch {
       return null;
@@ -376,23 +376,23 @@
     }
 
     return {
-      question: item.question.trim(),
-      options,
+      question: normalizeMathText(item.question).trim(),
+      options: options.map(normalizeMathText),
       correctIndex,
       explanation:
         typeof item.explanation === 'string' && item.explanation.trim()
-          ? item.explanation.trim()
+          ? normalizeMathText(item.explanation).trim()
           : 'Vergleiche die richtige Antwort noch einmal mit dem Material.'
     };
   }
 
   function normalizeMiniEvaluation(value: unknown) {
     if (Array.isArray(value)) {
-      return value.map((item) => String(item).trim()).filter(Boolean);
+      return value.map((item) => normalizeMathText(String(item)).trim()).filter(Boolean);
     }
 
     if (value && typeof value === 'object') {
-      return Object.values(value).map((item) => String(item).trim()).filter(Boolean);
+      return Object.values(value).map((item) => normalizeMathText(String(item)).trim()).filter(Boolean);
     }
 
     return [
@@ -440,6 +440,26 @@
     return cleanText;
   }
 
+  function sanitizeJsonForParse(text: string) {
+    return text.replace(/(?<!\\)\\(?!["\\/bfnrtu])/g, '\\\\');
+  }
+
+  function normalizeMathText(value: string) {
+    return value
+      .replace(/\\\(/g, '')
+      .replace(/\\\)/g, '')
+      .replace(/\\\[/g, '')
+      .replace(/\\\]/g, '')
+      .replace(/\\sqrt\{([^{}]+)\}/g, '√($1)')
+      .replace(/\\approx/g, '≈')
+      .replace(/\\Rightarrow/g, '⇒')
+      .replace(/\\times/g, '×')
+      .replace(/\^2/g, '²')
+      .replace(/\^3/g, '³')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function extractDetectedTopic(text: string) {
     const match = text.match(/Erkanntes Thema:\s*([^\n]+)/i);
     return match?.[1] ?? '';
@@ -465,28 +485,6 @@
     }
 
     return `Du hast gerade an ${topic} gearbeitet. Als Nächstes lohnt sich eine kurze Übung oder ein Quiz dazu.`;
-  }
-
-  function buildOverallAssessment(records: ProgressRecord[], latest?: ChatMessage) {
-    if (latest?.assessment && (latest.mode === 'quiz' || records.length >= 2)) {
-      return latest.assessment;
-    }
-
-    if (records.length < 2) {
-      return '';
-    }
-
-    const recent = [...records].slice(-3);
-    const topics = [...new Set(recent.map((record) => record.topic))].join(', ');
-    const quiz = [...records]
-      .reverse()
-      .find((record) => record.quizScore !== null && record.quizTotal !== null);
-
-    if (quiz && quiz.quizScore !== null && quiz.quizTotal !== null) {
-      return scoreAssessment(quiz.quizScore, quiz.quizTotal, quiz.topic);
-    }
-
-    return `Du hast zuletzt an ${topics} gearbeitet. Gut ist, dass du mehrere Lernaktionen nutzt. Als Nächstes solltest du eines der Themen mit einem Quiz überprüfen.`;
   }
 
   function scoreAssessment(score: number, total: number, topic: string) {
@@ -650,7 +648,6 @@
         <p>Lokaler KI-Lerncoach</p>
       </div>
     </div>
-    <span class="local-badge">LM Studio lokal</span>
   </header>
 
   <section class="chat-layout">
@@ -680,7 +677,6 @@
                 <QuizView
                   title={message.quiz.title}
                   questions={message.quiz.questions}
-                  miniEvaluation={message.quiz.miniEvaluation}
                   onComplete={(score, total) => handleQuizComplete(message.id, score, total)}
                 />
               {:else}
@@ -691,13 +687,6 @@
 
               {#if message.pdfName}
                 <p class="attachment-note">PDF: {message.pdfName}</p>
-              {/if}
-
-              {#if message.assessment && message.role === 'assistant' && !message.pending && message.mode === 'quiz'}
-                <section class="assessment-card" aria-label="Gesamteinschätzung">
-                  <h3>Gesamteinschätzung</h3>
-                  <p>{message.assessment}</p>
-                </section>
               {/if}
 
               {#if message.role === 'assistant' && !message.pending && !message.error && !message.quiz}
@@ -792,16 +781,6 @@
 
     <aside class="learning-sidebar">
       <ProgressChart refreshTrigger={progressTrigger} />
-
-      <section class="overall-card" aria-labelledby="overall-title">
-        <p class="eyebrow">Gesamteinschätzung</p>
-        <h2 id="overall-title">Was jetzt dran ist</h2>
-        {#if overallAssessment}
-          <p>{overallAssessment}</p>
-        {:else}
-          <p>Nach einem Quiz oder mehreren Lernaktionen erscheint hier eine Einschätzung zu Stärken, Lücken und nächstem Schritt.</p>
-        {/if}
-      </section>
     </aside>
   </section>
 </main>
