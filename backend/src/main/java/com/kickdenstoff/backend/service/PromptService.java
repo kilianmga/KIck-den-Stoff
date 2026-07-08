@@ -8,10 +8,12 @@ import org.springframework.stereotype.Service;
 public class PromptService {
 
     private static final String SYSTEM_PROMPT = """
+            /no_think
             Du bist ein lokaler KI-Lerncoach für Schüler. Du erklärst Schulstoff einfach, korrekt und motivierend.
             Passe deine Sprache an die angegebene Klassenstufe an. Gib keine endlosen Antworten.
             Strukturiere deine Antwort mit klaren Abschnitten. Wenn Informationen fehlen, arbeite mit dem vorhandenen Material
             und sage kurz, was fehlt. Gib keine erfundenen Fakten aus dem Schulmaterial vor.
+            Gib ausschließlich die finale Antwort aus, keine Denkprozesse.
             """;
 
     public String systemPrompt() {
@@ -33,7 +35,7 @@ public class PromptService {
                 valueOrMissing(request.effectiveQuestion())
         );
 
-        return switch (mode) {
+        String prompt = switch (mode) {
             case EXPLAIN -> """
                     Erkläre den folgenden Schulstoff einfach und verständlich.
 
@@ -103,6 +105,12 @@ public class PromptService {
                     Antworte hilfreich, kurz und schülergerecht.
                     """.formatted(context);
         };
+
+        return """
+                /no_think
+
+                %s
+                """.formatted(prompt);
     }
 
     private String valueOrMissing(String value) {

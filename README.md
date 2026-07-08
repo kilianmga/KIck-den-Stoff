@@ -24,6 +24,12 @@ LM_STUDIO_BASE_URL=http://localhost:1234/v1
 LM_STUDIO_MODEL=local-model
 ```
 
+`local-model` nutzt in LM Studio normalerweise das aktuell geladene Chat-Modell. Wenn du gezielt ein bestimmtes Modell setzen willst, nimm den Namen aus `GET /v1/models` oder aus der LM-Studio-Modellanzeige:
+
+```bash
+LM_STUDIO_MODEL="dein/modellname" ./gradlew bootRun
+```
+
 ## Backend starten
 
 ```bash

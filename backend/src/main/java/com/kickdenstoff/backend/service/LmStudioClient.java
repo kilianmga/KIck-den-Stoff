@@ -59,11 +59,52 @@ public class LmStudioClient {
         }
 
         LmStudioChatResponse.Message message = response.choices().getFirst().message();
-        if (message == null || message.content() == null || message.content().isBlank()) {
-            throw new LmStudioException("LM Studio hat eine leere Antwort zurückgegeben.");
+        if (message == null) {
+            throw new LmStudioException("LM Studio hat keine Chat-Nachricht zurückgegeben.");
         }
 
-        return message.content().trim();
+        if (message.content() != null && !message.content().isBlank()) {
+            return message.content().trim();
+        }
+
+        if (message.reasoningContent() != null && !message.reasoningContent().isBlank()) {
+            return extractFinalAnswerFromReasoning(message.reasoningContent());
+        }
+
+        throw new LmStudioException("LM Studio hat eine leere Antwort zurückgegeben. Bei Qwen-Modellen hilft oft ein höheres max_tokens-Limit oder ein Modell ohne Thinking-Modus.");
+    }
+
+    private String extractFinalAnswerFromReasoning(String reasoningContent) {
+        String trimmed = reasoningContent.trim();
+        List<String> markers = List.of(
+                "Finalizing the Output (in German):",
+                "Finalizing the Output:",
+                "Final answer:",
+                "Final Answer:",
+                "Finale Antwort:",
+                "Antwort:"
+        );
+
+        for (String marker : markers) {
+            int markerIndex = trimmed.lastIndexOf(marker);
+            if (markerIndex >= 0) {
+                String candidate = trimmed.substring(markerIndex + marker.length()).trim();
+                if (!candidate.isBlank()) {
+                    return stripUnfinishedQuote(candidate);
+                }
+            }
+        }
+
+        throw new LmStudioException("LM Studio hat nur Denktext statt einer finalen Antwort geliefert. Stelle in LM Studio das Prompt Template auf ChatML oder nutze ein Modell ohne Thinking-Modus.");
+    }
+
+    private String stripUnfinishedQuote(String value) {
+        String cleaned = value.trim();
+        int lastThoughtStep = cleaned.lastIndexOf("\n\n");
+        if (cleaned.endsWith("but") && lastThoughtStep > 0) {
+            return cleaned.substring(0, lastThoughtStep).trim();
+        }
+        return cleaned;
     }
 
     private String stripTrailingSlash(String value) {
