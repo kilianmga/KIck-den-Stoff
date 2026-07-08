@@ -10,9 +10,9 @@ Die App soll Schülern helfen, Schulstoff besser zu verstehen. Das Backend nimmt
 
 ## Tech Stack
 
-- Java 21
-- Spring Boot 3.x
-- Maven
+- Java 25
+- Spring Boot 4.1
+- Gradle
 - Spring Web
 - Spring Validation
 - Optional: Lombok, nur wenn das Team damit klarkommt
