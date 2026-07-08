@@ -404,14 +404,37 @@
 
   function stripJsonNoise(text: string) {
     let cleanText = text.trim();
-    if (cleanText.startsWith('```json')) {
-      cleanText = cleanText.slice(7).trim();
-    } else if (cleanText.startsWith('```')) {
-      cleanText = cleanText.slice(3).trim();
+    
+    const firstBrace = cleanText.indexOf('{');
+    const firstBracket = cleanText.indexOf('[');
+    let startIndex = -1;
+    
+    if (firstBrace !== -1 && firstBracket !== -1) {
+      startIndex = Math.min(firstBrace, firstBracket);
+    } else if (firstBrace !== -1) {
+      startIndex = firstBrace;
+    } else {
+      startIndex = firstBracket;
     }
-
-    if (cleanText.endsWith('```')) {
-      cleanText = cleanText.slice(0, -3).trim();
+    
+    if (startIndex !== -1) {
+      cleanText = cleanText.slice(startIndex);
+    }
+    
+    const lastBrace = cleanText.lastIndexOf('}');
+    const lastBracket = cleanText.lastIndexOf(']');
+    let endIndex = -1;
+    
+    if (lastBrace !== -1 && lastBracket !== -1) {
+      endIndex = Math.max(lastBrace, lastBracket);
+    } else if (lastBrace !== -1) {
+      endIndex = lastBrace;
+    } else {
+      endIndex = lastBracket;
+    }
+    
+    if (endIndex !== -1) {
+      cleanText = cleanText.slice(0, endIndex + 1);
     }
 
     return cleanText;
