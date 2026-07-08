@@ -43,10 +43,6 @@ public class PromptService {
                     ## Wichtigste Begriffe
                     ## Beispiel
                     ## Merksatz
-                    ## Gesamteinschätzung
-                    - Was der Schüler schon gut kann
-                    - Wo noch eine Lücke sein könnte
-                    - Was als Nächstes geübt werden sollte
                     """.formatted(fullContext);
             case EXERCISES -> """
                     Erstelle passende Übungsaufgaben zum erkannten Stoff.
