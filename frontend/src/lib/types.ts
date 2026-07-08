@@ -23,3 +23,10 @@ export type ModeDefinition = {
   shortLabel: string;
   hint: string;
 };
+
+export type QuizQuestion = {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+};

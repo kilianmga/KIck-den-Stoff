@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { LearningResponse } from './types';
+  import type { LearningResponse, QuizQuestion } from './types';
+  import QuizView from './QuizView.svelte';
 
   export let loading = false;
   export let response: LearningResponse | null = null;
@@ -11,6 +12,35 @@
 
   $: answer = response?.answer ?? response?.result ?? '';
   $: hasAnswer = Boolean(answer && response?.success);
+
+  // Parse quiz if the mode was quiz
+  $: isQuizMode = response?.mode === 'quiz' || response?.mode === 'QUIZ';
+  $: quizData = parseQuizData(answer, isQuizMode);
+
+  function parseQuizData(text: string, isQuiz: boolean): QuizQuestion[] | null {
+    if (!isQuiz || !text) return null;
+    
+    // Sometimes the LLM wraps JSON in markdown blocks
+    let cleanText = text.trim();
+    if (cleanText.startsWith('```json')) {
+      cleanText = cleanText.substring(7);
+    } else if (cleanText.startsWith('```')) {
+      cleanText = cleanText.substring(3);
+    }
+    if (cleanText.endsWith('```')) {
+      cleanText = cleanText.substring(0, cleanText.length - 3);
+    }
+
+    try {
+      const parsed = JSON.parse(cleanText);
+      if (Array.isArray(parsed) && parsed.length > 0 && 'question' in parsed[0]) {
+        return parsed as QuizQuestion[];
+      }
+    } catch (e) {
+      console.warn('Failed to parse Quiz JSON:', e);
+    }
+    return null;
+  }
 
   async function copyAnswer() {
     if (!answer) return;
@@ -51,13 +81,17 @@
       <p>{response.error ?? 'LM Studio ist nicht erreichbar. Bitte Modell laden und Local Server starten.'}</p>
     </div>
   {:else if hasAnswer}
-    <article class="answer-card">
-      <pre>{answer}</pre>
-    </article>
-    <div class="response-actions">
-      <button type="button" on:click={onSimplify}>Noch einfacher erklären</button>
-      <button type="button" on:click={onQuiz}>Quiz daraus machen</button>
-    </div>
+    {#if isQuizMode && quizData}
+      <QuizView questions={quizData} />
+    {:else}
+      <article class="answer-card">
+        <pre>{answer}</pre>
+      </article>
+      <div class="response-actions">
+        <button type="button" on:click={onSimplify}>Noch einfacher erklären</button>
+        <button type="button" on:click={onQuiz}>Quiz daraus machen</button>
+      </div>
+    {/if}
   {:else}
     <div class="empty-state">
       <p>Wähle einen Lernmodus. Die Antwort erscheint hier als Lernkarte.</p>

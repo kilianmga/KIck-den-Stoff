@@ -59,11 +59,19 @@ public class PromptService {
                     Erstelle einen kurzen Wissenstest zum Schulstoff.
 
                     %s
-                    Antwortformat:
-                    1. 5 Quizfragen
-                    2. Antwortmöglichkeiten, wenn sinnvoll
-                    3. Lösungen am Ende
-                    4. Mini-Auswertung, was man können sollte
+                    
+                    WICHTIG: Antworte AUSSCHLIESSLICH mit einem validen JSON-Array. Kein Markdown, kein Text davor oder danach!
+                    Format-Beispiel:
+                    [
+                      {
+                        "question": "Frage 1?",
+                        "options": ["A", "B", "C", "D"],
+                        "correctIndex": 0,
+                        "explanation": "Erklärung für Antwort A"
+                      }
+                    ]
+                    
+                    Erstelle 5 Quizfragen.
                     """.formatted(context);
             case CORRECT -> """
                     Korrigiere oder bewerte die folgende Schülerantwort.
