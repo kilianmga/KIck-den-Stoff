@@ -2,33 +2,51 @@
   import type { QuizQuestion } from './types';
 
   export let questions: QuizQuestion[] = [];
+  export let title = 'Quiz erstellt';
+  export let miniEvaluation: string[] = [];
+  export let onComplete: (score: number, total: number) => void = () => {};
 
   let currentIndex = 0;
   let selectedOption: number | null = null;
   let showExplanation = false;
   let score = 0;
   let quizFinished = false;
+  let showSolutions = false;
+  let completionSent = false;
 
   $: currentQuestion = questions[currentIndex];
   $: isLastQuestion = currentIndex === questions.length - 1;
+  $: percentage = questions.length ? Math.round((score / questions.length) * 100) : 0;
+  $: activeEvaluation = pickEvaluation();
 
   function selectOption(index: number) {
-    if (showExplanation) return;
+    if (showExplanation || quizFinished) return;
     selectedOption = index;
     showExplanation = true;
 
     if (index === currentQuestion.correctIndex) {
-      score++;
+      score += 1;
     }
   }
 
   function nextQuestion() {
     if (isLastQuestion) {
-      quizFinished = true;
-    } else {
-      currentIndex++;
-      selectedOption = null;
-      showExplanation = false;
+      finishQuiz();
+      return;
+    }
+
+    currentIndex += 1;
+    selectedOption = null;
+    showExplanation = false;
+  }
+
+  function finishQuiz() {
+    quizFinished = true;
+    showSolutions = true;
+
+    if (!completionSent) {
+      completionSent = true;
+      onComplete(score, questions.length);
     }
   }
 
@@ -38,253 +56,343 @@
     showExplanation = false;
     score = 0;
     quizFinished = false;
+    showSolutions = false;
+    completionSent = false;
+  }
+
+  function pickEvaluation() {
+    if (!miniEvaluation.length || !questions.length) {
+      if (percentage >= 80) return 'Stark: Du hast das Thema schon gut im Griff.';
+      if (percentage >= 50) return 'Gute Basis: Wiederhole die unsicheren Fragen noch einmal.';
+      return 'Da ist noch Übung nötig: Starte mit den Grundlagen und mache danach ein neues Quiz.';
+    }
+
+    if (percentage >= 80) return miniEvaluation[2] ?? miniEvaluation.at(-1) ?? miniEvaluation[0];
+    if (percentage >= 50) return miniEvaluation[1] ?? miniEvaluation[0];
+    return miniEvaluation[0];
   }
 </script>
 
-<div class="quiz-container">
+<section class="quiz-card" aria-labelledby="quiz-title">
+  <div class="quiz-title-row">
+    <div>
+      <p>Quiz erstellen</p>
+      <h3 id="quiz-title">{title}</h3>
+    </div>
+    <span>{questions.length} Fragen</span>
+  </div>
+
   {#if quizFinished}
     <div class="quiz-result">
-      <h3>Quiz beendet!</h3>
-      <p class="score">Du hast {score} von {questions.length} Fragen richtig beantwortet.</p>
-      
-      <div class="progress-bar-bg">
-        <div 
-          class="progress-bar-fill" 
-          style="width: {(score / questions.length) * 100}%"
-        ></div>
+      <strong>{score} von {questions.length} richtig</strong>
+      <div class="progress-bar-bg" aria-hidden="true">
+        <div class="progress-bar-fill" style="width: {percentage}%"></div>
       </div>
-
-      <button class="primary-button" on:click={restartQuiz}>Nochmal spielen</button>
+      <p>{activeEvaluation}</p>
+      <button class="primary-button" type="button" on:click={restartQuiz}>Nochmal üben</button>
     </div>
   {:else if currentQuestion}
     <div class="quiz-header">
-      <span class="quiz-progress">Frage {currentIndex + 1} von {questions.length}</span>
-      <span class="quiz-score">Punkte: {score}</span>
+      <span>Frage {currentIndex + 1} von {questions.length}</span>
+      <span>Punkte: {score}</span>
     </div>
 
-    <h3 class="question-text">{currentQuestion.question}</h3>
+    <h4 class="question-text">{currentQuestion.question}</h4>
 
     <div class="options-grid">
       {#each currentQuestion.options as option, index}
         {@const isSelected = selectedOption === index}
         {@const isCorrect = index === currentQuestion.correctIndex}
         {@const isWrong = isSelected && !isCorrect}
-        
+
         <button
           class="option-button"
           class:selected={isSelected}
           class:correct={showExplanation && isCorrect}
           class:wrong={showExplanation && isWrong}
           disabled={showExplanation}
+          type="button"
           on:click={() => selectOption(index)}
         >
           <span class="option-letter">{String.fromCharCode(65 + index)}</span>
           <span class="option-text">{option}</span>
-          
-          {#if showExplanation}
-            {#if isCorrect}
-              <span class="icon correct-icon">✓</span>
-            {:else if isWrong}
-              <span class="icon wrong-icon">✗</span>
-            {/if}
+          {#if showExplanation && isCorrect}
+            <b>Richtig</b>
+          {:else if showExplanation && isWrong}
+            <b>Falsch</b>
           {/if}
         </button>
       {/each}
     </div>
 
     {#if showExplanation}
-      <div class="explanation-box" class:correct-box={selectedOption === currentQuestion.correctIndex} class:wrong-box={selectedOption !== currentQuestion.correctIndex}>
-        <h4>{selectedOption === currentQuestion.correctIndex ? 'Richtig!' : 'Falsch!'}</h4>
+      <div
+        class="explanation-box"
+        class:correct-box={selectedOption === currentQuestion.correctIndex}
+        class:wrong-box={selectedOption !== currentQuestion.correctIndex}
+      >
+        <strong>
+          {selectedOption === currentQuestion.correctIndex ? 'Richtig gelöst' : 'Nicht ganz'}
+        </strong>
         <p>{currentQuestion.explanation}</p>
       </div>
 
-      <button class="primary-button next-button" on:click={nextQuestion}>
+      <button class="primary-button next-button" type="button" on:click={nextQuestion}>
         {isLastQuestion ? 'Ergebnis anzeigen' : 'Nächste Frage'}
       </button>
     {/if}
   {:else}
-    <div class="error-state">
-      <p>Keine Fragen gefunden.</p>
-    </div>
+    <p class="quiz-empty">Keine Quizfragen gefunden.</p>
   {/if}
-</div>
+
+  {#if questions.length}
+    <div class="solution-toggle">
+      <button class="ghost-button" type="button" on:click={() => (showSolutions = !showSolutions)}>
+        {showSolutions ? 'Lösungen ausblenden' : 'Lösungen anzeigen'}
+      </button>
+    </div>
+
+    {#if showSolutions}
+      <ol class="solution-list">
+        {#each questions as question, index}
+          <li>
+            <strong>{index + 1}. {question.options[question.correctIndex] ?? 'Lösung prüfen'}</strong>
+            <span>{question.explanation}</span>
+          </li>
+        {/each}
+      </ol>
+    {/if}
+  {/if}
+</section>
 
 <style>
-  .quiz-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+  .quiz-card {
+    display: grid;
+    gap: 18px;
+    border: 2px solid #f5b400;
+    border-radius: 8px;
+    background: #fff9e7;
+    padding: 18px;
+    box-shadow: 0 18px 36px rgba(118, 83, 13, 0.13);
   }
 
+  .quiz-title-row,
   .quiz-header {
     display: flex;
     justify-content: space-between;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    font-weight: 500;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .quiz-title-row p,
+  .quiz-title-row h3,
+  .quiz-header span,
+  .question-text,
+  .quiz-result p {
+    margin: 0;
+  }
+
+  .quiz-title-row p {
+    color: #76530d;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .quiz-title-row h3 {
+    color: var(--ink);
+    font-size: 1.3rem;
+    line-height: 1.15;
+  }
+
+  .quiz-title-row > span {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #ffe39a;
+    color: #76530d;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    font-weight: 900;
+  }
+
+  .quiz-header {
+    color: var(--muted);
+    font-size: 0.88rem;
+    font-weight: 800;
   }
 
   .question-text {
-    margin: 0;
-    font-size: 1.25rem;
-    line-height: 1.4;
+    color: var(--ink);
+    font-size: 1.08rem;
+    line-height: 1.45;
   }
 
   .options-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    display: grid;
+    gap: 10px;
   }
 
   .option-button {
-    display: flex;
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    background: var(--surface-2);
-    border: 2px solid transparent;
-    border-radius: 12px;
-    cursor: pointer;
+    gap: 10px;
+    width: 100%;
+    border: 1px solid #e2c46d;
+    border-radius: 8px;
+    background: #fffdf6;
+    color: var(--ink);
+    padding: 12px;
     text-align: left;
-    transition: all 0.2s;
-    font-size: 1rem;
-    color: var(--text-primary);
+    transition: border-color 160ms ease, transform 160ms ease, background-color 160ms ease;
   }
 
   .option-button:hover:not(:disabled) {
-    background: var(--surface-3);
-    transform: translateY(-2px);
+    border-color: #b88400;
+    transform: translateY(-1px);
   }
 
   .option-button:disabled {
-    cursor: default;
+    opacity: 1;
   }
 
   .option-letter {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: var(--surface-1);
-    border-radius: 50%;
-    font-weight: 600;
-    font-size: 0.9rem;
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border-radius: 999px;
+    background: #ffe39a;
+    color: #76530d;
+    font-weight: 900;
   }
 
   .option-text {
-    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
-  .icon {
-    font-weight: bold;
-    font-size: 1.2rem;
+  .option-button b {
+    color: inherit;
+    font-size: 0.78rem;
   }
 
-  .correct-icon {
-    color: #10b981;
-  }
-
-  .wrong-icon {
-    color: #ef4444;
-  }
-
-  /* Status Colors */
   .option-button.correct {
-    background: rgba(16, 185, 129, 0.1);
-    border-color: #10b981;
+    border-color: #16a067;
+    background: #e9fbf2;
   }
 
   .option-button.correct .option-letter {
-    background: #10b981;
+    background: #16a067;
     color: white;
   }
 
   .option-button.wrong {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: #ef4444;
+    border-color: #d94b4b;
+    background: #fff0ef;
   }
 
   .option-button.wrong .option-letter {
-    background: #ef4444;
+    background: #d94b4b;
     color: white;
   }
 
   .explanation-box {
-    padding: 1.25rem;
-    border-radius: 12px;
-    background: var(--surface-2);
-    animation: slideIn 0.3s ease-out;
-  }
-
-  .explanation-box h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.1rem;
+    display: grid;
+    gap: 5px;
+    border-left: 4px solid #16a067;
+    border-radius: 8px;
+    background: #fffdf6;
+    padding: 12px;
   }
 
   .explanation-box p {
     margin: 0;
-    color: var(--text-secondary);
+    color: var(--muted);
     line-height: 1.5;
   }
 
-  .correct-box {
-    border-left: 4px solid #10b981;
-  }
-  .correct-box h4 {
-    color: #10b981;
-  }
-
   .wrong-box {
-    border-left: 4px solid #ef4444;
-  }
-  .wrong-box h4 {
-    color: #ef4444;
+    border-left-color: #d94b4b;
   }
 
   .next-button {
-    align-self: flex-end;
-    margin-top: 0.5rem;
+    justify-self: end;
   }
 
   .quiz-result {
-    text-align: center;
-    padding: 2rem 1rem;
+    display: grid;
+    gap: 12px;
   }
 
-  .quiz-result h3 {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
+  .quiz-result strong {
+    color: var(--ink);
+    font-size: 1.3rem;
   }
 
-  .quiz-result .score {
-    font-size: 1.2rem;
-    color: var(--text-secondary);
-    margin-bottom: 2rem;
+  .quiz-result p {
+    color: var(--muted);
+    line-height: 1.5;
   }
 
   .progress-bar-bg {
     height: 12px;
-    background: var(--surface-3);
-    border-radius: 6px;
     overflow: hidden;
-    margin-bottom: 2rem;
+    border-radius: 999px;
+    background: #f3df9d;
   }
 
   .progress-bar-fill {
     height: 100%;
-    background: var(--accent-primary);
-    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: inherit;
+    background: var(--accent);
+    transition: width 420ms ease;
   }
 
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
+  .solution-toggle {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .solution-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+
+  .solution-list li {
+    padding-left: 2px;
+  }
+
+  .solution-list strong,
+  .solution-list span {
+    display: block;
+  }
+
+  .solution-list strong {
+    color: var(--ink);
+  }
+
+  .solution-list span,
+  .quiz-empty {
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 560px) {
+    .quiz-title-row,
+    .quiz-header {
+      flex-direction: column;
     }
-    to {
-      opacity: 1;
-      transform: translateY(0);
+
+    .option-button {
+      grid-template-columns: 30px minmax(0, 1fr);
+    }
+
+    .option-button b {
+      grid-column: 2;
     }
   }
 </style>

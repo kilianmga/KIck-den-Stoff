@@ -10,7 +10,8 @@ const endpointByMode: Record<LearningMode, string> = {
 };
 
 function resolveBackendBaseUrl() {
-  const configuredBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL;
+  const configuredBaseUrl =
+    import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_BACKEND_BASE_URL;
   if (configuredBaseUrl) {
     return configuredBaseUrl;
   }

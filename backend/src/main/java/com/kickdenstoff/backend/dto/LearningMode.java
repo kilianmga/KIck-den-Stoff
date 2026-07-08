@@ -3,11 +3,11 @@ package com.kickdenstoff.backend.dto;
 import java.util.Locale;
 
 public enum LearningMode {
-    EXPLAIN("explain", "Einfach erklären"),
-    EXERCISES("exercises", "Aufgaben erstellen"),
-    QUIZ("quiz", "Wissen testen"),
-    CORRECT("correct", "Text korrigieren"),
-    CRASH_COURSE("crash-course", "Klausur-Crashkurs"),
+    EXPLAIN("explain", "Erklären"),
+    EXERCISES("exercises", "Üben"),
+    QUIZ("quiz", "Quiz erstellen"),
+    CORRECT("correct", "Korrigieren"),
+    CRASH_COURSE("crash-course", "Crashkurs"),
     CHAT("chat", "Freie Frage"),
     SHOW_SOLUTION_PATH("solution-path", "Lösungsweg anzeigen");
 

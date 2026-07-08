@@ -6,7 +6,7 @@ plugins {
 
 group = 'com.kickdenstoff'
 version = '0.0.1-SNAPSHOT'
-description = 'Kick den Stoff Backend'
+description = 'KIck den Stoff Backend'
 
 java {
     toolchain {

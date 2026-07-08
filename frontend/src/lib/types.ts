@@ -1,11 +1,14 @@
 export type LearningMode = 'explain' | 'exercises' | 'quiz' | 'correct' | 'crash-course' | 'chat';
 
 export type LearningRequest = {
-  subject: string;
-  grade: string;
-  topic: string;
-  inputText: string;
-  userQuestion: string;
+  subject?: string;
+  grade?: string;
+  topic?: string;
+  inputText?: string;
+  input?: string;
+  userQuestion?: string;
+  style?: string;
+  mode?: string;
 };
 
 export type LearningResponse = {
@@ -29,4 +32,12 @@ export type QuizQuestion = {
   options: string[];
   correctIndex: number;
   explanation: string;
+};
+
+export type QuizPayload = {
+  title: string;
+  topic: string;
+  questions: QuizQuestion[];
+  miniEvaluation: string[];
+  overallAssessment?: string;
 };
