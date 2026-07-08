@@ -1,7 +1,9 @@
 <script lang="ts">
   import ModeButton from './lib/ModeButton.svelte';
   import ResponseBox from './lib/ResponseBox.svelte';
+  import ProgressChart from './lib/ProgressChart.svelte';
   import { sendLearningRequest } from './lib/api';
+  import { addProgress } from './lib/db';
   import type { LearningMode, LearningRequest, LearningResponse, ModeDefinition } from './lib/types';
 
   const modes: ModeDefinition[] = [
@@ -56,6 +58,7 @@
   let response: LearningResponse | null = null;
   let loading = false;
   let error = '';
+  let progressTrigger = 0;
 
   const demoInputs = {
     math: {
@@ -91,6 +94,8 @@
 
     try {
       response = await sendLearningRequest(mode, request);
+      await addProgress(mode, request.subject);
+      progressTrigger++;
     } catch (err) {
       error = err instanceof Error ? err.message : 'Unbekannter Fehler.';
     } finally {
@@ -127,18 +132,7 @@
       <span>K</span>
     </div>
     <div class="hero-copy">
-      <p class="local-label">Läuft lokal über LM Studio</p>
       <h1 id="page-title">Kick den Stoff</h1>
-      <p>
-        Gib Schulstoff ein, wähle einen Lernmodus und erhalte eine klare Lernkarte aus deinem
-        lokalen KI-Modell.
-      </p>
-    </div>
-    <div class="status-strip" aria-label="Demo-Schritte">
-      <span>Input</span>
-      <span>Prompt</span>
-      <span>LM Studio</span>
-      <span>Lernkarte</span>
     </div>
   </section>
 
@@ -154,17 +148,7 @@
         </button>
       </div>
 
-      <div class="quick-demos" aria-label="Demo-Beispiele">
-        <button type="button" on:click={() => loadDemo('math', 'crash-course')} disabled={loading}>
-          Mathearbeit
-        </button>
-        <button type="button" on:click={() => loadDemo('history', 'correct')} disabled={loading}>
-          Textkorrektur
-        </button>
-        <button type="button" on:click={() => loadDemo('percent', 'exercises')} disabled={loading}>
-          Prozentrechnung
-        </button>
-      </div>
+
 
       <div class="field-grid">
         <label>
@@ -229,12 +213,15 @@
       </div>
     </form>
 
-    <ResponseBox
-      {loading}
-      {response}
-      {error}
-      onSimplify={simplifyAnswer}
-      onQuiz={createQuiz}
-    />
+    <div class="right-column">
+      <ProgressChart refreshTrigger={progressTrigger} />
+      <ResponseBox
+        {loading}
+        {response}
+        {error}
+        onSimplify={simplifyAnswer}
+        onQuiz={createQuiz}
+      />
+    </div>
   </section>
 </main>
