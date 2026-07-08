@@ -8,12 +8,16 @@ import com.kickdenstoff.backend.dto.LearningRequest;
 import com.kickdenstoff.backend.dto.LearningResponse;
 import com.kickdenstoff.backend.service.LearningService;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @Validated
 @RestController
@@ -38,37 +42,64 @@ public class LearningController {
         );
     }
 
-    @PostMapping("/learn")
+    @PostMapping(value = "/learn", consumes = MediaType.APPLICATION_JSON_VALUE)
     public LearningResponse learn(@Valid @RequestBody LearningRequest request) {
         return learningService.learn(LearningMode.from(request.mode()), request);
     }
 
-    @PostMapping("/learn/explain")
+    @PostMapping(value = "/learn/{mode}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public LearningResponse learnWithPdf(
+            @PathVariable String mode,
+            @RequestParam(required = false) String subject,
+            @RequestParam(required = false) String grade,
+            @RequestParam(required = false) String gradeLevel,
+            @RequestParam(required = false) String topic,
+            @RequestParam(required = false) String inputText,
+            @RequestParam(required = false) String input,
+            @RequestParam(required = false) String userQuestion,
+            @RequestParam(required = false) String style,
+            @RequestParam("pdf") MultipartFile pdfFile
+    ) {
+        LearningRequest request = new LearningRequest(
+                subject,
+                grade,
+                gradeLevel,
+                topic,
+                inputText,
+                input,
+                userQuestion,
+                style,
+                mode
+        );
+        return learningService.learnWithPdf(LearningMode.from(mode), request, pdfFile);
+    }
+
+    @PostMapping(value = "/learn/explain", consumes = MediaType.APPLICATION_JSON_VALUE)
     public LearningResponse explain(@Valid @RequestBody LearningRequest request) {
         return learningService.learn(LearningMode.EXPLAIN, request);
     }
 
-    @PostMapping("/learn/exercises")
+    @PostMapping(value = "/learn/exercises", consumes = MediaType.APPLICATION_JSON_VALUE)
     public LearningResponse exercises(@Valid @RequestBody LearningRequest request) {
         return learningService.learn(LearningMode.EXERCISES, request);
     }
 
-    @PostMapping("/learn/quiz")
+    @PostMapping(value = "/learn/quiz", consumes = MediaType.APPLICATION_JSON_VALUE)
     public LearningResponse quiz(@Valid @RequestBody LearningRequest request) {
         return learningService.learn(LearningMode.QUIZ, request);
     }
 
-    @PostMapping("/learn/correct")
+    @PostMapping(value = "/learn/correct", consumes = MediaType.APPLICATION_JSON_VALUE)
     public LearningResponse correct(@Valid @RequestBody LearningRequest request) {
         return learningService.learn(LearningMode.CORRECT, request);
     }
 
-    @PostMapping("/learn/crash-course")
+    @PostMapping(value = "/learn/crash-course", consumes = MediaType.APPLICATION_JSON_VALUE)
     public LearningResponse crashCourse(@Valid @RequestBody LearningRequest request) {
         return learningService.learn(LearningMode.CRASH_COURSE, request);
     }
 
-    @PostMapping("/learn/chat")
+    @PostMapping(value = "/learn/chat", consumes = MediaType.APPLICATION_JSON_VALUE)
     public LearningResponse chat(@Valid @RequestBody LearningRequest request) {
         return learningService.learn(LearningMode.CHAT, request);
     }
