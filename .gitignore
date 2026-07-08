@@ -1,0 +1,20 @@
+.DS_Store
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.svelte-kit/
+
+# Backend
+backend/build/
+backend/.gradle/
+backend/out/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Environment
+.env
+.env.local
