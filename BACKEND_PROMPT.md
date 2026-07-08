@@ -1,6 +1,6 @@
-# Backend Prompt — Kick den Stoff
+# Backend Prompt — KIck den Stoff
 
-Du übernimmst das Backend für eine Hackathon-App namens **Kick den Stoff**.
+Du übernimmst das Backend für eine Hackathon-App namens **KIck den Stoff**.
 
 ## Ziel
 

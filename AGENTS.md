@@ -1,8 +1,8 @@
-# AGENTS.md – Kick den Stoff
+# AGENTS.md – KIck den Stoff
 
 ## Projektkontext
 
-**Kick den Stoff** ist ein Hackathon-Prototyp für eine lokale KI-Lernapp. Die App hilft Schülern, Schulstoff schnell zu verstehen, zu üben und zu testen. Die KI läuft lokal über **LM Studio** und wird vom Backend über eine OpenAI-kompatible Schnittstelle angesprochen.
+**KIck den Stoff** ist ein Hackathon-Prototyp für eine lokale KI-Lernapp. Die App hilft Schülern, Schulstoff schnell zu verstehen, zu üben und zu testen. Die KI läuft lokal über **LM Studio** und wird vom Backend über eine OpenAI-kompatible Schnittstelle angesprochen.
 
 Die App soll aus eingegebenem oder hochgeladenem Lernstoff folgende Lernhilfen erzeugen:
 
@@ -102,7 +102,7 @@ Der Frontend-Agent baut die Svelte-Oberfläche für den Lernprototyp.
 
 Elemente:
 
-- Titel: „Kick den Stoff“
+- Titel: „KIck den Stoff“
 - Untertitel: „Lokaler KI-Lerncoach für deinen Schulstoff“
 - großes Texteingabefeld
 - Auswahl für Fach oder Thema
@@ -616,7 +616,7 @@ npm run dev
 
 ## Hackathon Pitch
 
-**Kick den Stoff** ist ein lokaler KI-Lerncoach für Schüler. Statt sensible Schultexte in die Cloud zu schicken, nutzt die App ein lokales Sprachmodell über LM Studio. Schüler können Lernstoff eingeben und daraus sofort Erklärungen, Übungen, Tests, Korrekturen und Klausurpläne erzeugen. Das macht KI-Lernen datenschutzfreundlicher, schulnah und auch ohne externe KI-Anbieter demonstrierbar.
+**KIck den Stoff** ist ein lokaler KI-Lerncoach für Schüler. Statt sensible Schultexte in die Cloud zu schicken, nutzt die App ein lokales Sprachmodell über LM Studio. Schüler können Lernstoff eingeben und daraus sofort Erklärungen, Übungen, Tests, Korrekturen und Klausurpläne erzeugen. Das macht KI-Lernen datenschutzfreundlicher, schulnah und auch ohne externe KI-Anbieter demonstrierbar.
 
 ## Definition of Done für den Hackathon
 

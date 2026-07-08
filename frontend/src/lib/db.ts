@@ -1,63 +1,105 @@
-// src/lib/db.ts
-const DB_NAME = 'KickDenStoffDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'progress';
+const STORAGE_KEY = 'kick-den-stoff-lernkurve-v1';
 
 export interface ProgressRecord {
-  id?: number;
+  id: string;
   timestamp: number;
   mode: string;
-  subject: string;
+  topic: string;
+  isQuiz: boolean;
+  quizScore: number | null;
+  quizTotal: number | null;
+  selfAssessment: string;
+  aiAssessment: string;
 }
 
-function getDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+export type ProgressInput = Omit<ProgressRecord, 'id' | 'timestamp'> & {
+  id?: string;
+  timestamp?: number;
+};
 
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('timestamp', 'timestamp', { unique: false });
-      }
-    };
+function createId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export async function addProgress(mode: string, subject: string): Promise<void> {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    const record: ProgressRecord = {
-      timestamp: Date.now(),
-      mode,
-      subject
-    };
-    const request = store.add(record);
+function readProgress(): ProgressRecord[] {
+  if (typeof localStorage === 'undefined') {
+    return [];
+  }
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter((record): record is ProgressRecord => Boolean(record && record.timestamp))
+      .sort((a, b) => a.timestamp - b.timestamp);
+  } catch {
+    return [];
+  }
+}
+
+function writeProgress(records: ProgressRecord[]) {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records.slice(-80)));
+}
+
+export async function addProgress(input: ProgressInput): Promise<ProgressRecord> {
+  const records = readProgress();
+  const record: ProgressRecord = {
+    id: input.id ?? createId(),
+    timestamp: input.timestamp ?? Date.now(),
+    mode: input.mode,
+    topic: input.topic || 'Unbekanntes Thema',
+    isQuiz: input.isQuiz,
+    quizScore: input.quizScore ?? null,
+    quizTotal: input.quizTotal ?? null,
+    selfAssessment: input.selfAssessment || 'Noch nicht eingeschätzt',
+    aiAssessment: input.aiAssessment || 'Noch keine Gesamteinschätzung vorhanden.'
+  };
+
+  records.push(record);
+  writeProgress(records);
+  return record;
+}
+
+export async function updateProgressRecord(
+  id: string,
+  patch: Partial<Omit<ProgressRecord, 'id' | 'timestamp'>>
+): Promise<ProgressRecord | null> {
+  const records = readProgress();
+  const index = records.findIndex((record) => record.id === id);
+
+  if (index === -1) {
+    return null;
+  }
+
+  records[index] = {
+    ...records[index],
+    ...patch
+  };
+  writeProgress(records);
+  return records[index];
+}
+
+export async function getProgress(): Promise<ProgressRecord[]> {
+  return readProgress();
 }
 
 export async function getProgressLast7Days(): Promise<ProgressRecord[]> {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
-    const index = store.index('timestamp');
-    
-    // 7 days ago
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const range = IDBKeyRange.lowerBound(sevenDaysAgo);
-    
-    const request = index.getAll(range);
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  return readProgress().filter((record) => record.timestamp >= sevenDaysAgo);
 }

@@ -1,4 +1,4 @@
-# Kick den Stoff
+# KIck den Stoff
 
 Lokaler KI-Lerncoach fuer Schulstoff. Das Svelte-Frontend spricht mit einem Spring-Boot-Backend, das LM Studio ueber die OpenAI-kompatible lokale API anfragt.
 

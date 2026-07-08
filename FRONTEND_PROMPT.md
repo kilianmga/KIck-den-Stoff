@@ -1,6 +1,6 @@
-# Frontend Prompt — Kick den Stoff
+# Frontend Prompt — KIck den Stoff
 
-Du übernimmst das Frontend für eine Hackathon-App namens **Kick den Stoff**.
+Du übernimmst das Frontend für eine Hackathon-App namens **KIck den Stoff**.
 
 ## Ziel
 
@@ -61,7 +61,7 @@ Baue eine einfache, demo-taugliche Oberfläche:
 
 ```txt
 Header:
-  Kick den Stoff
+  KIck den Stoff
   Lokaler KI-Lerncoach mit LM Studio
 
 Linke oder obere Eingabe-Sektion:
@@ -237,7 +237,7 @@ Die App soll modern und einfach aussehen:
 Mögliche Texte:
 
 ```txt
-Kick den Stoff
+KIck den Stoff
 Dein lokaler KI-Lerncoach
 Schulstoff rein, Verständnis raus.
 ```

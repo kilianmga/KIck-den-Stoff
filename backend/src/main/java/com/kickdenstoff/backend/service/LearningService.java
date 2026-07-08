@@ -21,7 +21,7 @@ public class LearningService {
 
     public LearningResponse learn(LearningMode mode, LearningRequest request) {
         if (request == null || !request.hasLearningInput()) {
-            return LearningResponse.failure(mode, "Bitte gib ein Thema, Material oder eine Frage ein.");
+            return LearningResponse.failure(mode, "Bitte schreib deinen Schulstoff, deine Aufgabe oder deine Frage in die Chatbox.");
         }
 
         if (mode == LearningMode.CORRECT && isTooShortForCorrection(request.effectiveInputText())) {
@@ -30,7 +30,7 @@ public class LearningService {
                     Füge bitte den Satz oder Absatz ein, den ich korrigieren soll.
 
                     ## Beispiel
-                    Schreibe in das Feld "Schulstoff oder Material" deinen echten Text, zum Beispiel: "Die Französische Revolution begann, weil viele Menschen unzufrieden waren."
+                    Schreibe in die Chatbox deinen echten Text, zum Beispiel: "Die Französische Revolution begann, weil viele Menschen unzufrieden waren."
                     """);
         }
 
