@@ -59,6 +59,9 @@
   let loading = false;
   let error = '';
   let progressTrigger = 0;
+  let pdfFile: File | null = null;
+  let pdfError = '';
+  let pdfInput: HTMLInputElement;
 
   const demoInputs = {
     math: {
@@ -93,7 +96,7 @@
     response = null;
 
     try {
-      response = await sendLearningRequest(mode, request);
+      response = await sendLearningRequest(mode, request, pdfFile);
       await addProgress(mode, request.subject);
       progressTrigger++;
     } catch (err) {
@@ -112,7 +115,43 @@
 
   function loadDemo(kind: keyof typeof demoInputs, mode: LearningMode) {
     request = { ...demoInputs[kind] };
+    clearPdf();
     void runMode(mode);
+  }
+
+  function handlePdfChange(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+
+    pdfError = '';
+    pdfFile = null;
+
+    if (!file) {
+      return;
+    }
+
+    const isPdf = file.type === 'application/pdf' && file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      input.value = '';
+      pdfError = 'Bitte nur PDF-Dateien hochladen. Bilder werden nicht verarbeitet.';
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      input.value = '';
+      pdfError = 'Die PDF ist zu gross. Bitte maximal 10 MB hochladen.';
+      return;
+    }
+
+    pdfFile = file;
+  }
+
+  function clearPdf() {
+    pdfFile = null;
+    pdfError = '';
+    if (pdfInput) {
+      pdfInput.value = '';
+    }
   }
 
   function simplifyAnswer() {
@@ -189,6 +228,28 @@
           placeholder="Füge deine Notizen, Aufgabe oder Antwort ein..."
           on:input={(event) => updateField('inputText', event.currentTarget.value)}
         ></textarea>
+      </label>
+
+      <label class="file-upload">
+        <span>PDF-Datei</span>
+        <input
+          bind:this={pdfInput}
+          type="file"
+          accept="application/pdf,.pdf"
+          disabled={loading}
+          on:change={handlePdfChange}
+        />
+        {#if pdfFile}
+          <div class="file-chip">
+            <span>{pdfFile.name}</span>
+            <button type="button" on:click={clearPdf} disabled={loading}>Entfernen</button>
+          </div>
+        {:else}
+          <small>Nur echte Text-PDFs, keine Bilder oder Scans.</small>
+        {/if}
+        {#if pdfError}
+          <small class="field-error">{pdfError}</small>
+        {/if}
       </label>
 
       <label>
