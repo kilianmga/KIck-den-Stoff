@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getProgress } from './db';
+  import { deleteProgressRecord, getProgress } from './db';
   import type { ProgressRecord } from './db';
 
   export let refreshTrigger = 0;
+  export let onOpenSession: (record: ProgressRecord) => void = () => {};
+  export let onDeleteSession: (id: string) => void = () => {};
 
   let records: ProgressRecord[] = [];
   let days: { label: string; count: number; dateStr: string }[] = [];
@@ -73,6 +75,17 @@
     return labels[mode] ?? mode;
   }
 
+  async function deleteSession(record: ProgressRecord) {
+    const shouldDelete = window.confirm(`"${record.topic}" aus der Lernkurve löschen?`);
+    if (!shouldDelete) {
+      return;
+    }
+
+    await deleteProgressRecord(record.id);
+    onDeleteSession(record.id);
+    await loadData();
+  }
+
   $: if (refreshTrigger !== undefined) {
     void loadData();
   }
@@ -124,9 +137,20 @@
               <strong>{record.topic}</strong>
               <span>{modeLabel(record.mode)} · {new Date(record.timestamp).toLocaleString('de-DE')}</span>
             </div>
-            {#if record.isQuiz && record.quizScore !== null && record.quizTotal !== null}
-              <b>{record.quizScore}/{record.quizTotal}</b>
-            {/if}
+            <div class="session-actions">
+              {#if record.isQuiz && record.quizScore !== null && record.quizTotal !== null}
+                <b>{record.quizScore}/{record.quizTotal}</b>
+              {/if}
+              <button type="button" on:click={() => onOpenSession(record)}>Öffnen</button>
+              <button
+                class="danger-action"
+                type="button"
+                aria-label={`${record.topic} löschen`}
+                on:click={() => deleteSession(record)}
+              >
+                Löschen
+              </button>
+            </div>
           </li>
         {/each}
       </ul>
@@ -283,7 +307,7 @@
 
   .recent-topics li {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
     border-radius: 8px;
@@ -295,6 +319,13 @@
     display: grid;
     gap: 2px;
     min-width: 0;
+  }
+
+  .session-actions {
+    display: flex !important;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px !important;
   }
 
   .recent-topics strong {
@@ -319,5 +350,40 @@
     color: #76530d;
     padding: 5px 8px;
     font-size: 0.78rem;
+  }
+
+  .session-actions button {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--accent-strong);
+    padding: 5px 8px;
+    font-size: 0.78rem;
+    font-weight: 850;
+  }
+
+  .session-actions button:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .session-actions .danger-action {
+    color: var(--danger);
+  }
+
+  .session-actions .danger-action:hover {
+    border-color: rgba(196, 63, 63, 0.35);
+    background: var(--danger-soft);
+  }
+
+  @media (max-width: 520px) {
+    .recent-topics li {
+      flex-direction: column;
+    }
+
+    .session-actions {
+      flex-wrap: wrap;
+      width: 100%;
+    }
   }
 </style>
