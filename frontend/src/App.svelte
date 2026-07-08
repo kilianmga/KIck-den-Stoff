@@ -5,7 +5,7 @@
   import ProgressChart from './lib/ProgressChart.svelte';
   import QuizView from './lib/QuizView.svelte';
   import { sendLearningRequest } from './lib/api';
-  import { addProgress, getProgress, updateProgressRecord } from './lib/db';
+  import { addProgress, getProgress, isStoredLearningMode, updateProgressRecord } from './lib/db';
   import type { ProgressRecord } from './lib/db';
   import type {
     LearningMode,
@@ -160,7 +160,13 @@
 
     try {
       const response = await sendLearningRequest(mode, payload, attachedPdf);
-      const assistantMessage = await buildAssistantMessage(response, mode, topic, pendingMessage.id);
+      const assistantMessage = await buildAssistantMessage(
+        response,
+        mode,
+        topic,
+        pendingMessage.id,
+        userMessage
+      );
       messages = messages.map((message) =>
         message.id === pendingMessage.id ? assistantMessage : message
       );
@@ -189,7 +195,8 @@
     response: LearningResponse,
     mode: LearningMode,
     fallbackTopic: string,
-    pendingId: string
+    pendingId: string,
+    userMessage: ChatMessage
   ): Promise<ChatMessage> {
     if (!response.success) {
       return {
@@ -216,7 +223,13 @@
       quizScore: null,
       quizTotal: quiz?.questions.length ?? null,
       selfAssessment: selfAssessmentForMode(mode),
-      aiAssessment: assessment
+      aiAssessment: assessment,
+      inputText: userMessage.text,
+      answer,
+      title: quiz?.title ?? response.title ?? labelForMode(mode),
+      modeLabel: labelForMode(mode),
+      pdfName: userMessage.pdfName ?? null,
+      quiz
     });
 
     return {
@@ -264,6 +277,47 @@
       });
       await refreshProgress();
     }
+  }
+
+  async function restoreSession(record: ProgressRecord) {
+    const mode = isStoredLearningMode(record.mode) ? record.mode : 'explain';
+    const restoredUser: ChatMessage = {
+      id: createId(),
+      role: 'user',
+      text: record.inputText || `Session zu ${record.topic} geöffnet`,
+      timestamp: record.timestamp,
+      mode,
+      modeLabel: record.modeLabel || labelForMode(mode),
+      topic: record.topic,
+      pdfName: record.pdfName ?? undefined
+    };
+    const restoredAssistant: ChatMessage = {
+      id: createId(),
+      role: 'assistant',
+      text:
+        record.answer ||
+        record.aiAssessment ||
+        'Diese ältere Session enthält nur Lernkurven-Daten, aber keine gespeicherte Antwort.',
+      timestamp: record.timestamp,
+      mode,
+      modeLabel: record.modeLabel || labelForMode(mode),
+      title: record.title || labelForMode(mode),
+      topic: record.topic,
+      quiz: record.quiz,
+      assessment: record.aiAssessment,
+      progressId: record.id,
+      quizScore: record.quizScore ?? undefined,
+      quizTotal: record.quizTotal ?? undefined
+    };
+
+    selectedMode = mode;
+    messages = [...messages, restoredUser, restoredAssistant];
+    await scrollChatToBottom();
+  }
+
+  async function handleProgressDeleted(id: string) {
+    progressRecords = progressRecords.filter((record) => record.id !== id);
+    progressTrigger += 1;
   }
 
   function handlePdfChange(event: Event) {
@@ -780,7 +834,11 @@
     </div>
 
     <aside class="learning-sidebar">
-      <ProgressChart refreshTrigger={progressTrigger} />
+      <ProgressChart
+        refreshTrigger={progressTrigger}
+        onOpenSession={restoreSession}
+        onDeleteSession={handleProgressDeleted}
+      />
     </aside>
   </section>
 </main>
